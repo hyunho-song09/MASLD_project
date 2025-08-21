@@ -237,7 +237,6 @@ If you use this pipeline, please consider citing relevant packages:
 
 - **Script**: MASLD Metabolomics Analysis Pipeline
 - **Language**: R
-- **License**: Open source
 - **Maintenance**: Active development
 
 ## Version History
