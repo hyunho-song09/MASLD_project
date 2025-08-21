@@ -1,350 +1,251 @@
-# MASLD_project
+# MASLD Metabolomics Analysis Pipeline
 
+## Overview
 
-1. Overview
+This R pipeline provides a comprehensive analysis framework for metabolomics data comparing Normal Control (NC) vs MASLD (Metabolic Dysfunction-Associated Steatotic Liver Disease) groups. The pipeline includes statistical testing, correlation analysis, machine learning models, and external validation.
 
-This pipeline automates:
+## Features
 
-Data loading and preprocessing
+- **Statistical Analysis**: Differential metabolite analysis with FDR correction
+- **Visualization**: Volcano plots, correlation heatmaps, and scatter plots
+- **Machine Learning**: Multiple classification models with ROC analysis
+- **Correlation Analysis**: Group-specific correlation patterns and differences
+- **External Validation**: Independent dataset validation
+- **Reproducibility**: Comprehensive session information and seed management
 
-Statistical testing with a volcano plot
+## Requirements
 
-Group-wise correlation analysis and Fisher z-based correlation-difference testing
+### R Version
+- R >= 4.0.0
 
-Machine learning with ROC evaluation and overfitting checks
+### Required Packages
+```r
+required_packages <- c(
+  "xlsx", "dplyr", "ggplot2", "tidyverse", "pheatmap", "Hmisc", 
+  "svglite", "psych", "LMSstat", "caret", "pROC", "ROCR", "readxl"
+)
+```
 
-External validation of key metabolite correlations
+## Installation
 
-Session information capture for reproducibility
+1. Clone or download the analysis script
+2. Install required packages:
+```r
+for (pkg in required_packages) {
+  if (!require(pkg, character.only = TRUE)) {
+    install.packages(pkg)
+    library(pkg, character.only = TRUE)
+  }
+}
+```
 
-[Data Load] -> [Z-score Normalize] -> [Stats + Volcano]
-                -> [Group-wise Correlation + Fisher Z-test]
-                -> [ML Models + ROC + Overfitting]
-                -> [External Validation] -> [Reports]
+## Data Structure
 
-2. Project Structure and Required Files
-project_root/
-├─ data/
-│  ├─ 250721_MASLD.xlsx
-│  ├─ 250726_val_01_plasma.xlsx
-│  └─ 250726_val_03_plasma.xlsx
-├─ outputs/               # auto-created
-│  ├─ significant_plots/  # auto-created
-│  └─ ...                 # result files are written here
-└─ script.R               # the provided script
+### Input Files Required
+```
+data/
+├── 250721_MASLD.xlsx
+│   ├── df (sheet): Main metabolomics data
+│   └── mapping (sheet): Sample mapping information
+├── 250726_val_01_plasma.xlsx
+│   └── test_all (sheet): Validation dataset 1
+└── 250726_val_03_plasma.xlsx
+    └── test_all (sheet): Validation dataset 2
+```
 
-2.1 250721_MASLD.xlsx sheet layout
+### Expected Data Format
+- **Sample**: Sample identifiers
+- **Group**: NC or MASLD classification
+- **Metabolites**: M_001, M_002, ... M_xxx columns with numerical values
 
-Sheet df
+## Pipeline Workflow
 
-Column 1: Sample
+### Step 1: Data Import and Preprocessing
+```r
+# Load and normalize data
+data_list <- load_and_preprocess_data()
+```
+- Imports raw metabolomics data
+- Applies z-score normalization to metabolite columns
+- Creates normalized dataset for analysis
 
-Column 2: Group with values NC or MASLD
+### Step 2: Statistical Analysis
+```r
+# Perform differential analysis
+stat_results <- perform_statistical_analysis(data_list$normalized, data_list$raw)
+```
+- **LMSstat Analysis**: Comprehensive statistical testing with FDR correction
+- **Manual t-tests**: Individual metabolite comparisons
+- **Volcano Plot**: Visualization of fold changes vs significance
+- **Boxplots**: Group comparison visualization
 
-Columns 3+: metabolite features
+**Key Functions:**
+- `All_stats()`: LMSstat comprehensive analysis
+- `perform_manual_ttest()`: Individual t-test calculations
+- `create_volcano_plot()`: Volcano plot generation
 
-Sheet mapping
+### Step 3: Correlation Analysis
+```r
+# Analyze correlation patterns
+correlation_results <- perform_correlation_analysis(data_list$normalized)
+```
+- **Group-specific Correlations**: Separate correlation matrices for NC and MASLD
+- **Correlation Heatmaps**: Clustered visualization of metabolite relationships
+- **Differential Correlations**: Fisher's Z-test for correlation differences
+- **Significant Pairs**: Top correlation differences between groups
 
-Feature ID to human-readable name mapping
+**Key Functions:**
+- `calculate_group_correlations()`: Pearson correlations with p-values
+- `create_correlation_heatmaps()`: Clustered heatmap visualization
+- `find_significant_correlation_differences()`: Fisher's Z-test analysis
 
-Notes
+### Step 4: Machine Learning Analysis
+```r
+# Build and evaluate classification models
+ml_results <- perform_ml_analysis(data_list$normalized)
+```
+- **Feature Engineering**: Local correlations and group-centered interactions
+- **Model Training**: GLM and Random Forest approaches
+- **Cross-validation**: 5-fold CV with performance metrics
+- **ROC Analysis**: Comprehensive model evaluation
+- **Overfitting Detection**: Train vs test performance comparison
 
-The script uses normalized values for statistical tests and raw values for fold change calculations.
+**Model Types:**
+- **Mean Difference GLM**: Based on significantly different metabolites
+- **Interaction GLM**: Using derived correlation features
+- **Random Forest**: Ensemble methods for both feature sets
 
-2.2 External validation files
+### Step 5: Validation Analysis
+```r
+# External dataset validation
+validation_results <- perform_validation_analysis()
+```
+- **External Datasets**: Independent validation using plasma samples
+- **Correlation Validation**: M_263 vs M_180 relationships
+- **Comparative Analysis**: Cross-dataset correlation patterns
 
-250726_val_01_plasma.xlsx sheet test_all
+## Output Structure
 
-250726_val_03_plasma.xlsx sheet test_all
+```
+outputs/
+├── volcano_plot.svg                    # Differential analysis
+├── correlation_heatmap_NC.svg          # NC group correlations
+├── correlation_heatmap_MASLD.svg       # MASLD group correlations
+├── ROC_curves_test.svg                 # Model performance
+├── ROC_curves_ggplot.svg              # Enhanced ROC visualization
+├── validation_comparison.svg           # External validation
+├── significant_correlation_pairs.xlsx  # Statistical results
+├── model_performance_comparison.xlsx   # ML performance metrics
+├── session_info.txt                   # Reproducibility info
+└── significant_plots/                 # Individual scatter plots
+    ├── metabolite1_vs_metabolite2.svg
+    └── ...
+```
 
-Both are standardized to two variables: M_180 and M_263.
+## Key Analysis Features
 
-3. Environment Setup
-3.1 Required R packages
+### Statistical Testing
+- **Multiple Testing Correction**: Benjamini-Hochberg FDR control
+- **Effect Size Calculation**: Log2 fold changes using raw data
+- **Significance Thresholds**: FDR < 0.15 for significance
 
-The script auto-installs and loads packages listed in required_packages.
-xlsx depends on Java. If Java is problematic, you can switch to readxl as below.
+### Advanced Correlation Analysis
+- **Fisher's Z-test**: Statistical comparison of correlations between groups
+- **Clustering**: Hierarchical clustering for metabolite relationships
+- **Coefficient of Variation**: Metabolite variability assessment
 
-Alternative without Java
+### Machine Learning
+- **Feature Engineering**:
+  - Local correlation calculation
+  - Group-centered interaction terms
+  - Polynomial features
+- **Model Evaluation**:
+  - AUC-ROC analysis
+  - Sensitivity/Specificity metrics
+  - F1-score calculation
+  - Cross-validation performance
 
-Replace the xlsx::read.xlsx calls with readxl::read_excel:
+### Visualization
+- **Volcano Plots**: Publication-ready differential analysis
+- **Heatmaps**: Clustered correlation matrices
+- **ROC Curves**: Multiple model comparison
+- **Scatter Plots**: Significant correlation pairs
 
-# Original
-raw_df     <- xlsx::read.xlsx("data/250721_MASLD.xlsx", sheetName = "df")
-mapping_df <- xlsx::read.xlsx("data/250721_MASLD.xlsx", sheetName = "mapping")
+## Usage
 
-# Alternative
-raw_df     <- readxl::read_excel("data/250721_MASLD.xlsx", sheet = "df")
-mapping_df <- readxl::read_excel("data/250721_MASLD.xlsx", sheet = "mapping")
-
-3.2 Working directory
-
-Set your project root:
-
-setwd("~/projects/masld-pipeline")
-
-4. Quick Start
-4.1 Run in R console or RStudio
-source("script.R")
+### Complete Pipeline Execution
+```r
+# Run entire analysis
 results <- main_analysis_pipeline()
-print_session_info()
+```
 
-4.2 Run from command line
-Rscript script.R
+### Individual Step Execution
+```r
+# Step-by-step analysis
+data_list <- load_and_preprocess_data()
+stat_results <- perform_statistical_analysis(data_list$normalized, data_list$raw)
+correlation_results <- perform_correlation_analysis(data_list$normalized)
+ml_results <- perform_ml_analysis(data_list$normalized)
+validation_results <- perform_validation_analysis()
+```
 
+## Results Interpretation
 
-If the script prints “Script loaded. Run main_analysis_pipeline() to execute the complete analysis.”, change the ending block to run automatically:
+### Statistical Results
+- **Significant Metabolites**: FDR < 0.15
+- **Fold Changes**: Log2(MASLD/NC) ratios
+- **Effect Sizes**: Clinical relevance assessment
 
-results <- main_analysis_pipeline()
-print_session_info()
+### Correlation Differences
+- **Fisher's Z p-values**: Statistical significance of correlation differences
+- **Biological Relevance**: Metabolic pathway disruption indicators
 
-5. What Each Step Does
-5.1 Data loading and preprocessing
+### Machine Learning Performance
+- **AUC Values**: Model discrimination ability
+- **Cross-validation**: Generalization assessment
+- **Feature Importance**: Key metabolite identification
 
-Function: load_and_preprocess_data()
+## Reproducibility
 
-Z-score normalization is applied to metabolite columns (columns 3+).
+The pipeline ensures reproducibility through:
+- **Seed Management**: Fixed random seeds (set.seed(42))
+- **Session Information**: Complete package versions
+- **Parameter Documentation**: All analysis parameters recorded
 
-Prints sample count, feature count, and group levels.
+## Troubleshooting
 
-5.2 Statistical analysis and volcano plot
+### Common Issues
+1. **Missing Packages**: Install all required packages before execution
+2. **Data Format**: Ensure proper Excel sheet structure
+3. **Memory Usage**: Large correlation matrices may require sufficient RAM
+4. **File Paths**: Verify data directory structure
 
-Function: perform_statistical_analysis(df_normalized, df_raw)
+### Performance Optimization
+- **Parallel Processing**: Can be enabled in LMSstat analysis
+- **Memory Management**: Clear workspace between major steps
+- **Output Control**: Selective plot generation for large datasets
 
-Performs LMSstat::All_stats and generates boxplots.
+## Citation and References
 
-Manual t tests produce log2FC, pvalue, FDR, and volcano plot.
+If you use this pipeline, please consider citing relevant packages:
+- **LMSstat**: Statistical analysis framework
+- **caret**: Machine learning infrastructure  
+- **pROC**: ROC analysis
+- **pheatmap**: Heatmap visualization
 
-Output
+## Author Information
 
-outputs/volcano_plot.svg
+- **Script**: MASLD Metabolomics Analysis Pipeline
+- **Language**: R
+- **License**: Open source
+- **Maintenance**: Active development
 
-Manual results are returned in the manual_results object.
+## Version History
 
-5.3 Correlation analysis and between-group differences
+- **v1.0**: Initial comprehensive pipeline
+- **Features**: Complete statistical, correlation, and ML analysis
+- **Validation**: External dataset integration
 
-Function: perform_correlation_analysis(df_normalized)
+---
 
-Pearson correlations via Hmisc::rcorr for NC and MASLD separately.
-
-MASLD heatmap uses NC clustering order for easier visual comparison.
-
-Fisher z tests evaluate correlation differences between groups.
-
-Coefficients of variation (CV) per group are computed and merged with fold change and univariate p values.
-
-Outputs
-
-outputs/correlation_heatmap_NC.svg
-
-outputs/correlation_heatmap_MASLD.svg
-
-outputs/significant_correlation_pairs.xlsx
-
-outputs/significant_plots/ top 10 scatterplots
-
-5.4 Machine learning and ROC analysis
-
-Function: perform_ml_analysis(df_normalized)
-
-Feature sets
-
-mean_diff_features as provided examples
-
-interaction_features are placeholders and should be replaced with actual significant metabolites
-
-Derived features
-
-Local correlation
-
-Group-centered interaction term
-
-Models
-
-Logistic regression and Random Forest with 5-fold CV using twoClassSummary and ROC metric
-
-Evaluation
-
-Train and test AUC, sensitivity, specificity, F1
-
-ROC curves saved in base R and ggplot formats
-
-Overfitting summary table
-
-Outputs
-
-outputs/ROC_curves_test.svg
-
-outputs/ROC_curves_ggplot.svg
-
-outputs/model_performance_comparison.xlsx
-
-5.5 External validation
-
-Function: perform_validation_analysis()
-
-Pearson correlations between M_180 and M_263 in two validation sets plus scatterplots.
-
-Outputs
-
-outputs/validation_set_01_scatter.svg
-
-outputs/validation_set_03_scatter.svg
-
-outputs/validation_comparison.svg
-
-5.6 Reproducibility information
-
-Function: print_session_info()
-
-Output file: outputs/session_info.txt
-
-6. Function Summary
-
-load_and_preprocess_data()
-Load inputs and normalize metabolite columns.
-
-perform_statistical_analysis(df, raw_df)
-LMSstat summary, manual t tests, volcano plot.
-
-perform_correlation_analysis(df)
-Group-wise correlations, Fisher z difference tests, heatmaps, and scatterplots.
-
-perform_ml_analysis(df)
-Derived features, model training, ROC evaluation, and overfitting checks.
-
-perform_validation_analysis()
-External correlation validation and comparison plots.
-
-main_analysis_pipeline()
-Orchestration that runs the full workflow and returns a results list.
-
-7. Outputs Summary
-
-Statistics
-
-outputs/volcano_plot.svg
-
-Correlations
-
-outputs/correlation_heatmap_NC.svg
-
-outputs/correlation_heatmap_MASLD.svg
-
-outputs/significant_correlation_pairs.xlsx
-
-outputs/significant_plots/*.svg
-
-Machine learning
-
-outputs/model_performance_comparison.xlsx
-
-outputs/ROC_curves_test.svg
-
-outputs/ROC_curves_ggplot.svg
-
-External validation
-
-outputs/validation_set_01_scatter.svg
-
-outputs/validation_set_03_scatter.svg
-
-outputs/validation_comparison.svg
-
-Reproducibility
-
-outputs/session_info.txt
-
-8. Customization Guide
-8.1 Replace feature sets
-# Mean difference based features
-mean_diff_features <- c("M_107", "M_109", "M_44", "M_185", "M_211", "M_111")
-
-# Interaction candidate features (2 variables expected by the current logic)
-interaction_features <- c("M_000", "M_999")  # Replace with significant metabolite names
-
-
-Update based on volcano results or correlation-difference findings.
-
-Keep interaction_features length at 2 for the current derived-feature logic.
-
-8.2 Significance thresholds
-
-Adjust FDR cutoff and multiple-testing method inside the relevant functions.
-
-Example: change p.adjust(..., method = "BH") to "BY" if needed.
-
-8.3 Cross-validation and tuning
-
-Modify trainControl parameters number and repeats.
-
-Tune Random Forest ntree and tuneLength.
-
-8.4 Output formats
-
-Change ggsave(..., device = "svg") to png or pdf and set width, height, dpi to match journal requirements.
-
-9. Statistical Notes
-
-t tests are performed on normalized features with FDR correction.
-
-Pearson correlations and Fisher z tests compare correlation structures across groups.
-
-If a group has fewer than 4 samples, Fisher z variance is undefined and such pairs are skipped or set to NA.
-
-CV is unstable when the mean approaches zero and is set to NA in that case.
-
-10. Troubleshooting
-
-xlsx installation errors
-
-Install Java or switch to readxl as shown above.
-
-Empty heatmaps
-
-Too many missing values or zero-variance features. Consider imputation or feature filtering.
-
-ROC errors
-
-Ensure binary factor order is correct:
-
-df$Group <- factor(df$Group, levels = c("NC", "MASLD"))
-
-
-Font issues in plots
-
-SVG is usually robust. If exporting PNG, check system fonts and consider ggtext alternatives if needed.
-
-11. Reproducibility Tips
-
-set.seed(42) is used in several places. For complete consistency, set it once at the top as well.
-
-Use renv to lock package versions.
-
-install.packages("renv")
-renv::init()
-
-12. Citations and Licensing
-
-To cite R packages, use:
-
-citation("pROC")
-citation("caret")
-citation("Hmisc")
-
-
-Follow your lab or grant policy for data and code licensing.
-
-13. Changelog Template
-
-2025-08-21
-
-Initial README in English
-
-Documented correlation-difference tests and ML outputs
-
-14. Contact
-
-Maintainer: [Your Name]
-
-Email: [your.email@domain]
+*This pipeline provides a comprehensive framework for metabolomics analysis with focus on reproducibility and clinical relevance.*
